@@ -9,9 +9,9 @@ import {
   onAuthStateChanged,
   sendEmailVerification,
   User,
+  browserLocalPersistence,
 } from 'firebase/auth';
-// @ts-ignore -- getReactNativePersistence exists at runtime but is missing from some type defs
-import { getReactNativePersistence } from 'firebase/auth';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const config = {
@@ -23,11 +23,6 @@ const config = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-/**
- * BloomDaily runs fully in "Guest Mode" (local-only, private-by-default) if
- * no Firebase config is supplied — see .env.example. This flag lets the rest
- * of the app know whether cloud auth/sync is actually available.
- */
 export const isFirebaseConfigured = Boolean(config.apiKey && config.projectId);
 
 let app: FirebaseApp | null = null;
@@ -40,9 +35,13 @@ function getFirebaseAuth(): Auth {
   if (!app) {
     app = getApps().length ? getApps()[0] : initializeApp(config);
     try {
-      auth = initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+      if (Platform.OS === 'web') {
+        auth = initializeAuth(app, { persistence: browserLocalPersistence });
+      } else {
+        const { getReactNativePersistence } = require('firebase/auth');
+        auth = initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+      }
     } catch {
-      // initializeAuth throws if already called once (e.g. fast refresh) — fall back to getAuth
       auth = getAuth(app);
     }
   }
@@ -68,12 +67,3 @@ export function subscribeToAuthChanges(callback: (user: User | null) => void): (
   if (!isFirebaseConfigured) return () => {};
   return onAuthStateChanged(getFirebaseAuth(), callback);
 }
-
-/**
- * NOTE on Google/Apple sign-in: these require native config (expo-auth-session
- * + your own OAuth client IDs for Google, and expo-apple-authentication +
- * capability entitlement for Apple) which can't be wired up without your own
- * Apple/Google developer credentials. The email/password flow above is fully
- * functional once you add Firebase keys; see README "Adding social sign-in"
- * for the exact packages and steps to add Google/Apple on top of this.
- */
