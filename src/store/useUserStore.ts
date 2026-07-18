@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateId } from '@/utils/id';
 import { UserProfile } from '@/types';
 import { isFirebaseConfigured, signInWithEmail, signOutFirebase, signUpWithEmail } from '@/services/firebase';
+import { startSync, stopSync } from '@/services/syncEngine';
 
 interface UserState {
   profile: UserProfile | null;
@@ -63,6 +64,7 @@ export const useUserStore = create<UserState>()(
             createdAt: new Date().toISOString(),
           },
         });
+        startSync(user.uid).catch(() => {});
       },
 
       signIn: async (email, password) => {
@@ -80,6 +82,7 @@ export const useUserStore = create<UserState>()(
             createdAt: existing?.createdAt ?? new Date().toISOString(),
           },
         });
+        startSync(user.uid).catch(() => {});
       },
 
       signOut: async () => {
@@ -87,6 +90,7 @@ export const useUserStore = create<UserState>()(
         if (current?.authMode === 'firebase') {
           await signOutFirebase().catch(() => {});
         }
+        stopSync();
         set({ profile: null });
       },
     }),

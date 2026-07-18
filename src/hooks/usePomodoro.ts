@@ -5,8 +5,11 @@ import { usePomodoroStore } from '@/store/usePomodoroStore';
 export type PomodoroPhase = 'focus' | 'shortBreak' | 'longBreak' | 'idle';
 
 export function usePomodoro(taskId: string | null) {
-  const { focusMinutes, breakMinutes, longBreakMinutes, sessionsUntilLongBreak, logCompletedFocusBlock } =
-    usePomodoroStore();
+  const focusMinutes = usePomodoroStore((s) => s.focusMinutes);
+  const breakMinutes = usePomodoroStore((s) => s.breakMinutes);
+  const longBreakMinutes = usePomodoroStore((s) => s.longBreakMinutes);
+  const sessionsUntilLongBreak = usePomodoroStore((s) => s.sessionsUntilLongBreak);
+  const logCompletedFocusBlock = usePomodoroStore((s) => s.logCompletedFocusBlock);
 
   const [phase, setPhase] = useState<PomodoroPhase>('idle');
   const [secondsLeft, setSecondsLeft] = useState(focusMinutes * 60);
@@ -24,6 +27,22 @@ export function usePomodoro(taskId: string | null) {
     [focusMinutes, breakMinutes, longBreakMinutes]
   );
 
+  const handlePhaseComplete = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    if (phase === 'focus') {
+      const nextCompleted = completedBlocks + 1;
+      setCompletedBlocks(nextCompleted);
+      logCompletedFocusBlock(taskId);
+      const goLong = nextCompleted % sessionsUntilLongBreak === 0;
+      const nextPhase: PomodoroPhase = goLong ? 'longBreak' : 'shortBreak';
+      setPhase(nextPhase);
+      setSecondsLeft(durationFor(nextPhase));
+    } else {
+      setPhase('focus');
+      setSecondsLeft(durationFor('focus'));
+    }
+  }, [phase, completedBlocks, taskId, sessionsUntilLongBreak, logCompletedFocusBlock, durationFor]);
+
   useEffect(() => {
     if (!isRunning) return;
     intervalRef.current = setInterval(() => {
@@ -38,24 +57,7 @@ export function usePomodoro(taskId: string | null) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRunning, phase]);
-
-  function handlePhaseComplete() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    if (phase === 'focus') {
-      const nextCompleted = completedBlocks + 1;
-      setCompletedBlocks(nextCompleted);
-      logCompletedFocusBlock(taskId);
-      const goLong = nextCompleted % sessionsUntilLongBreak === 0;
-      const nextPhase: PomodoroPhase = goLong ? 'longBreak' : 'shortBreak';
-      setPhase(nextPhase);
-      setSecondsLeft(durationFor(nextPhase));
-    } else {
-      setPhase('focus');
-      setSecondsLeft(durationFor('focus'));
-    }
-  }
+  }, [isRunning, handlePhaseComplete]);
 
   const start = useCallback(() => {
     if (phase === 'idle') {
@@ -76,8 +78,7 @@ export function usePomodoro(taskId: string | null) {
 
   const skip = useCallback(() => {
     handlePhaseComplete();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, completedBlocks]);
+  }, [handlePhaseComplete]);
 
   const progress = 1 - secondsLeft / durationFor(phase === 'idle' ? 'focus' : phase);
 

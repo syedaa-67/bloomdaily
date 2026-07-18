@@ -27,8 +27,9 @@ export const usePomodoroStore = create<PomodoroState>()(
         set({ focusMinutes: focus, breakMinutes: brk, longBreakMinutes: longBreak, sessionsUntilLongBreak: untilLong }),
 
       logCompletedFocusBlock: (taskId) => {
+        const todayStr = new Date().toISOString().slice(0, 10);
         const today = get().sessions.find(
-          (s) => s.taskId === taskId && s.startedAt.slice(0, 10) === new Date().toISOString().slice(0, 10)
+          (s) => s.taskId === taskId && s.startedAt.slice(0, 10) === todayStr
         );
         if (today) {
           set((state) => ({

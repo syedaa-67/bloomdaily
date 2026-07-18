@@ -8,10 +8,10 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   sendEmailVerification,
+  // @ts-ignore -- getReactNativePersistence exists at runtime but is missing from some type defs
+  getReactNativePersistence,
   User,
-  browserLocalPersistence,
 } from 'firebase/auth';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const config = {
@@ -23,29 +23,41 @@ const config = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
+/**
+ * BloomDaily runs fully in "Guest Mode" (local-only, private-by-default) if
+ * no Firebase config is supplied — see .env.example. This flag lets the rest
+ * of the app know whether cloud auth/sync is actually available.
+ */
 export const isFirebaseConfigured = Boolean(config.apiKey && config.projectId);
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 
-function getFirebaseAuth(): Auth {
+/**
+ * Shared Firebase app instance. Exported so other services (Firestore sync)
+ * can attach to the same app rather than each calling initializeApp() themselves.
+ */
+export function getFirebaseApp(): FirebaseApp {
   if (!isFirebaseConfigured) {
     throw new Error('Firebase is not configured. Add keys to .env or use Guest Mode.');
   }
   if (!app) {
     app = getApps().length ? getApps()[0] : initializeApp(config);
+  }
+  return app;
+}
+
+function getFirebaseAuth(): Auth {
+  const firebaseApp = getFirebaseApp();
+  if (!auth) {
     try {
-      if (Platform.OS === 'web') {
-        auth = initializeAuth(app, { persistence: browserLocalPersistence });
-      } else {
-        const { getReactNativePersistence } = require('firebase/auth');
-        auth = initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
-      }
+      auth = initializeAuth(firebaseApp, { persistence: getReactNativePersistence(AsyncStorage) });
     } catch {
-      auth = getAuth(app);
+      // initializeAuth throws if already called once (e.g. fast refresh) — fall back to getAuth
+      auth = getAuth(firebaseApp);
     }
   }
-  return auth!;
+  return auth;
 }
 
 export async function signUpWithEmail(email: string, password: string): Promise<User> {
@@ -67,3 +79,12 @@ export function subscribeToAuthChanges(callback: (user: User | null) => void): (
   if (!isFirebaseConfigured) return () => {};
   return onAuthStateChanged(getFirebaseAuth(), callback);
 }
+
+/**
+ * NOTE on Google/Apple sign-in: these require native config (expo-auth-session
+ * + your own OAuth client IDs for Google, and expo-apple-authentication +
+ * capability entitlement for Apple) which can't be wired up without your own
+ * Apple/Google developer credentials. The email/password flow above is fully
+ * functional once you add Firebase keys; see README "Adding social sign-in"
+ * for the exact packages and steps to add Google/Apple on top of this.
+ */

@@ -10,16 +10,28 @@ import { Task } from '@/types';
  * push on top later (e.g. cross-device nudges) using expo-server-sdk.
  */
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// expo-notifications does not support *scheduled* local notifications on
+// web (only immediate ones, via the browser Notification API) — see
+// https://docs.expo.dev/versions/latest/sdk/notifications/. Every reminder
+// in this app is a scheduled one, so on web we skip scheduling entirely
+// rather than let calls fail silently one by one. The rest of the app
+// (tasks, habits, sync) works exactly the same either way — reminders are
+// just a native-only enhancement.
+const supportsScheduledNotifications = Platform.OS !== 'web';
+
+if (supportsScheduledNotifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export async function ensureNotificationPermissions(): Promise<boolean> {
+  if (!supportsScheduledNotifications) return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
   let finalStatus = existing;
   if (existing !== 'granted') {
@@ -39,9 +51,8 @@ export async function ensureNotificationPermissions(): Promise<boolean> {
 
 /** Cancel every notification previously scheduled for a task. */
 export async function cancelTaskNotifications(task: Pick<Task, 'notificationIds'>) {
-  await Promise.all(
-    task.notificationIds.map((id) => Notifications.cancelScheduledNotificationAsync(id))
-  );
+  if (!supportsScheduledNotifications) return;
+  await Promise.all(task.notificationIds.map((id) => Notifications.cancelScheduledNotificationAsync(id)));
 }
 
 /**
@@ -49,6 +60,7 @@ export async function cancelTaskNotifications(task: Pick<Task, 'notificationIds'
  * and a reminder offset. Returns the new list of notification identifiers.
  */
 export async function scheduleTaskReminder(task: Task): Promise<string[]> {
+  if (!supportsScheduledNotifications) return [];
   await cancelTaskNotifications(task);
 
   if (!task.dueDate || task.isDone) return [];
@@ -77,7 +89,7 @@ function buildReminderBody(task: Task): string {
 }
 
 /** "Remind Me Later" quick options, in minutes. `null` means "end of day". */
-export const SNOOZE_OPTIONS: Array<{ label: string; minutes: number | null }> = [
+export const SNOOZE_OPTIONS: { label: string; minutes: number | null }[] = [
   { label: '15 min', minutes: 15 },
   { label: '30 min', minutes: 30 },
   { label: '1 hour', minutes: 60 },
@@ -87,6 +99,7 @@ export const SNOOZE_OPTIONS: Array<{ label: string; minutes: number | null }> = 
 
 /** Schedule a one-off snooze notification and return its identifier. */
 export async function scheduleSnooze(task: Task, minutesFromNow: number | null): Promise<string> {
+  if (!supportsScheduledNotifications) return '';
   let triggerDate: Date;
   if (minutesFromNow === null) {
     triggerDate = new Date();
@@ -99,7 +112,7 @@ export async function scheduleSnooze(task: Task, minutesFromNow: number | null):
   return Notifications.scheduleNotificationAsync({
     content: {
       title: `🌸 Still there? ${task.title}`,
-      body: 'Whenever you\'re ready — no pressure, just a gentle nudge.',
+      body: "Whenever you're ready — no pressure, just a gentle nudge.",
       data: { taskId: task.id, kind: 'snooze' },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
@@ -114,6 +127,7 @@ export async function scheduleSnooze(task: Task, minutesFromNow: number | null):
  * the app around the right time. See hooks/useEndOfDayEnforcement.ts.
  */
 export async function scheduleDailyEveningCheckIn(hour: number, minute: number): Promise<string> {
+  if (!supportsScheduledNotifications) return '';
   await Notifications.cancelScheduledNotificationAsync(EVENING_CHECKIN_ID).catch(() => {});
   return Notifications.scheduleNotificationAsync({
     identifier: EVENING_CHECKIN_ID,
@@ -133,6 +147,7 @@ export async function scheduleDailyEveningCheckIn(hour: number, minute: number):
 export const EVENING_CHECKIN_ID = 'bloomdaily-evening-checkin';
 
 export async function cancelDailyEveningCheckIn() {
+  if (!supportsScheduledNotifications) return;
   await Notifications.cancelScheduledNotificationAsync(EVENING_CHECKIN_ID).catch(() => {});
 }
 

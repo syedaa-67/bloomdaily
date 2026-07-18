@@ -93,7 +93,7 @@ export function TaskCard({ task, onPress }: Props) {
           <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
             <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>Remind me later</Text>
             <Text style={[styles.sheetSubtitle, { color: theme.textSecondary }]}>
-              No pressure — just choose when you'd like a gentle nudge.
+              No pressure — just choose when you&apos;d like a gentle nudge.
             </Text>
             {SNOOZE_OPTIONS.map((opt) => (
               <Pressable

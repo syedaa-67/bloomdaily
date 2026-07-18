@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useShallow } from 'zustand/react/shallow';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { QuickAddBar } from '@/components/QuickAddBar';
 import { TaskCard } from '@/components/TaskCard';
@@ -27,10 +26,26 @@ export function DashboardScreen() {
   const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   
-  // Safely select primitives or useShallow to prevent infinite rendering loops
   const profile = useUserStore((s) => s.profile);
-  const topPriorities = useTaskStore(useShallow((s) => s.getTopPrioritiesForToday(3)));
-  const cycleSuggestion = useWellnessStore((s) => s.getCycleAwareSuggestion());
+  
+  // 1. Grab stable calculation methods from stores
+  const getTopPrioritiesForToday = useTaskStore((s) => s.getTopPrioritiesForToday);
+  const getCycleAwareSuggestion = useWellnessStore((s) => s.getCycleAwareSuggestion);
+  
+  // 2. Subscribe to raw states to invalidate the cache during data mutations
+  const tasks = useTaskStore((s) => s.tasks);
+  const cycleSettings = useWellnessStore((s) => s.cycleSettings);
+  const cycleLogs = useWellnessStore((s) => s.cycleLogs);
+
+  // 3. Keep cache values correctly bound to data changes
+  const topPriorities = useMemo(() => {
+    return getTopPrioritiesForToday(3);
+  }, [tasks, getTopPrioritiesForToday]);
+
+  const cycleSuggestion = useMemo(() => {
+    return getCycleAwareSuggestion();
+  }, [cycleSettings, cycleLogs, getCycleAwareSuggestion]);
+
   const { shouldPromptReview, unfinishedToday } = useEndOfDayEnforcement();
 
   const quote = getQuoteForDate();
@@ -62,7 +77,7 @@ export function DashboardScreen() {
             🌙 {unfinishedToday.length} task{unfinishedToday.length === 1 ? '' : 's'} left today
           </Text>
           <Text style={{ color: theme.primaryDark, fontFamily: typography.fontFamily.body, fontSize: typography.size.xs }}>
-            Tap to review, reschedule, or celebrate what's done.
+            Tap to review, reschedule, or celebrate what&apos;s done.
           </Text>
         </Pressable>
       ) : null}
@@ -78,7 +93,7 @@ export function DashboardScreen() {
       <QuickAddBar />
       <MoodCheckIn />
 
-      <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Today's top priorities</Text>
+      <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Today&apos;s top priorities</Text>
       {topPriorities.length === 0 ? (
         <EmptyState
           emoji="✨"

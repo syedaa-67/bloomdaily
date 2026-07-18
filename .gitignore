@@ -14,5 +14,3 @@ npm-debug.*
 *.jsbundle
 *.log
 .DS_Store
-
-.vercel

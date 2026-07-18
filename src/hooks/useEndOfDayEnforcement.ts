@@ -1,33 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import { useTaskStore } from '@/store/useTaskStore';
-import { Task } from '@/types';
 
-/**
- * Surfaces the "gentle evening summary" described in the spec: unfinished
- * high-priority tasks due today, so the user can reschedule or wrap up
- * before midnight. The actual notification trigger is a daily-repeating OS
- * alarm (see notificationService.scheduleDailyEveningCheckIn) — this hook
- * computes what to *show* once the user opens the app around that time, and
- * also exposes the same data so a screen can render it proactively.
- */
 export function useEndOfDayEnforcement() {
   const tasks = useTaskStore((s) => s.tasks);
   const getTasksForDate = useTaskStore((s) => s.getTasksForDate);
-  const [unfinishedToday, setUnfinishedToday] = useState<Task[]>([]);
-  const [shouldPromptReview, setShouldPromptReview] = useState(false);
-
-  useEffect(() => {
+  
+  const unfinishedToday = useMemo(() => {
     const today = getTasksForDate(new Date()).filter((t) => !t.isDone);
-    const sorted = [...today].sort((a, b) => {
+    return [...today].sort((a, b) => {
       const rank = { High: 0, Medium: 1, Low: 2 };
       return rank[a.priority] - rank[b.priority];
     });
-    setUnfinishedToday(sorted);
-
-    const hour = new Date().getHours();
-    setShouldPromptReview(hour >= 18 && sorted.length > 0);
   }, [tasks, getTasksForDate]);
+
+  const [shouldPromptReview, setShouldPromptReview] = useState(() => {
+    const hour = new Date().getHours();
+    return hour >= 18 && unfinishedToday.length > 0;
+  });
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setShouldPromptReview(hour >= 18 && unfinishedToday.length > 0);
+  }, [unfinishedToday]);
 
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {

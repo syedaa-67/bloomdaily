@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { format } from 'date-fns';
@@ -8,7 +8,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { radius, shadow, spacing, typography } from '@/theme/theme';
 import { useWellnessStore } from '@/store/useWellnessStore';
 
-const FLOW_OPTIONS: Array<{ label: string; value: 'light' | 'medium' | 'heavy' }> = [
+const FLOW_OPTIONS: { label: string; value: 'light' | 'medium' | 'heavy' }[] = [
   { label: 'Light', value: 'light' },
   { label: 'Medium', value: 'medium' },
   { label: 'Heavy', value: 'heavy' },
@@ -17,11 +17,20 @@ const SYMPTOM_OPTIONS = ['Cramps', 'Headache', 'Fatigue', 'Bloating', 'Mood swin
 
 export function CycleTrackerScreen() {
   const theme = useTheme();
+  
+  // 1. Subscribe to the raw state
   const cycleSettings = useWellnessStore((s) => s.cycleSettings);
+  const cycleLogs = useWellnessStore((s) => s.cycleLogs);
+  
+  // 2. Grab stable store methods
   const setCycleSettings = useWellnessStore((s) => s.setCycleSettings);
   const logCycleDay = useWellnessStore((s) => s.logCycleDay);
-  const currentPhase = useWellnessStore((s) => s.getCurrentCyclePhase());
-  const suggestion = useWellnessStore((s) => s.getCycleAwareSuggestion());
+  const getCurrentCyclePhase = useWellnessStore((s) => s.getCurrentCyclePhase);
+  const getCycleAwareSuggestion = useWellnessStore((s) => s.getCycleAwareSuggestion);
+
+  // 3. Memoize calculations to prevent stale UI
+  const currentPhase = useMemo(() => getCurrentCyclePhase(), [cycleSettings, cycleLogs, getCurrentCyclePhase]);
+  const suggestion = useMemo(() => getCycleAwareSuggestion(), [currentPhase, getCycleAwareSuggestion]);
 
   const [flow, setFlow] = useState<'light' | 'medium' | 'heavy' | null>(null);
   const [symptoms, setSymptoms] = useState<string[]>([]);

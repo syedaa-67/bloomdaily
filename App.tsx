@@ -18,6 +18,8 @@ import {
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { ensureNotificationPermissions } from '@/services/notificationService';
+import { useUserStore } from '@/store/useUserStore';
+import { startSync } from '@/services/syncEngine';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -28,6 +30,17 @@ const MAX_FONT_WAIT_MS = 4000;
 
 function AppShell() {
   const theme = useTheme();
+
+  useEffect(() => {
+    // Firebase auth persists its own session across app launches — if the
+    // last signed-in profile used it, pick sync back up here rather than
+    // waiting for another explicit sign-in.
+    const profile = useUserStore.getState().profile;
+    if (profile?.authMode === 'firebase') {
+      startSync(profile.id).catch(() => {});
+    }
+  }, []);
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
@@ -38,7 +51,11 @@ function AppShell() {
 
 export default function App() {
   const [poppinsLoaded, poppinsError] = usePoppinsFonts({ Poppins_600SemiBold, Poppins_700Bold });
-  const [nunitoLoaded, nunitoError] = useNunitoFonts({ Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold });
+  const [nunitoLoaded, nunitoError] = useNunitoFonts({
+    Nunito_400Regular,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+  });
   const [timedOut, setTimedOut] = useState(false);
   const hasHiddenSplash = useRef(false);
 
@@ -80,4 +97,3 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
-

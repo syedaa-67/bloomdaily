@@ -17,7 +17,7 @@ const GOAL_OPTIONS = [
   'Track my wellness',
 ];
 
-const USER_TYPES: Array<{ label: string; value: UserProfile['userType'] }> = [
+const USER_TYPES: { label: string; value: UserProfile['userType'] }[] = [
   { label: 'Student', value: 'student' },
   { label: 'Professional', value: 'professional' },
   { label: 'Both', value: 'both' },

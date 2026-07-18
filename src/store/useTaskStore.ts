@@ -4,7 +4,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addDays, isBefore, startOfDay } from 'date-fns';
 import { Task, RecurrenceRule, Subtask, Priority, Category } from '@/types';
 import { generateId } from '@/utils/id';
-import { cancelTaskNotifications, scheduleSnooze, scheduleTaskReminder } from '@/services/notificationService';
+import {
+  cancelTaskNotifications,
+  scheduleSnooze,
+  scheduleTaskReminder,
+} from '@/services/notificationService';
 
 export interface NewTaskInput {
   title: string;
@@ -60,6 +64,7 @@ export const useTaskStore = create<TaskState>()(
           snoozeHistory: [],
           notificationIds: [],
           templateOrigin: input.templateOrigin,
+          updatedAt: new Date().toISOString(),
         };
 
         const notificationIds = await scheduleTaskReminder(task).catch(() => []);
@@ -84,7 +89,7 @@ export const useTaskStore = create<TaskState>()(
         };
 
         const notificationIds = await scheduleTaskReminder(merged).catch(() => existing.notificationIds);
-        const finalTask = { ...merged, notificationIds };
+        const finalTask = { ...merged, notificationIds, updatedAt: new Date().toISOString() };
 
         set((state) => ({
           tasks: state.tasks.map((t) => (t.id === id ? finalTask : t)),
@@ -106,11 +111,17 @@ export const useTaskStore = create<TaskState>()(
 
         set((state) => ({
           tasks: state.tasks.map((t) =>
-            t.id === id ? { ...t, isDone: nowDone, completedAt: nowDone ? new Date().toISOString() : null } : t
+            t.id === id
+              ? {
+                  ...t,
+                  isDone: nowDone,
+                  completedAt: nowDone ? new Date().toISOString() : null,
+                  updatedAt: new Date().toISOString(),
+                }
+              : t
           ),
         }));
 
-        // Spawn the next occurrence for recurring tasks when completed.
         if (nowDone && task.recurrence.type !== 'none' && task.dueDate) {
           const nextDue = computeNextOccurrence(new Date(task.dueDate), task.recurrence);
           if (nextDue) {
@@ -135,9 +146,8 @@ export const useTaskStore = create<TaskState>()(
             t.id === taskId
               ? {
                   ...t,
-                  subtasks: t.subtasks.map((s) =>
-                    s.id === subtaskId ? { ...s, isDone: !s.isDone } : s
-                  ),
+                  subtasks: t.subtasks.map((s) => (s.id === subtaskId ? { ...s, isDone: !s.isDone } : s)),
+                  updatedAt: new Date().toISOString(),
                 }
               : t
           ),
@@ -148,14 +158,24 @@ export const useTaskStore = create<TaskState>()(
         if (!title.trim()) return;
         const newSub: Subtask = { id: generateId(), title: title.trim(), isDone: false };
         set((state) => ({
-          tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, subtasks: [...t.subtasks, newSub] } : t)),
+          tasks: state.tasks.map((t) =>
+            t.id === taskId
+              ? { ...t, subtasks: [...t.subtasks, newSub], updatedAt: new Date().toISOString() }
+              : t
+          ),
         }));
       },
 
       removeSubtask: (taskId, subtaskId) => {
         set((state) => ({
           tasks: state.tasks.map((t) =>
-            t.id === taskId ? { ...t, subtasks: t.subtasks.filter((s) => s.id !== subtaskId) } : t
+            t.id === taskId
+              ? {
+                  ...t,
+                  subtasks: t.subtasks.filter((s) => s.id !== subtaskId),
+                  updatedAt: new Date().toISOString(),
+                }
+              : t
           ),
         }));
       },
@@ -164,7 +184,7 @@ export const useTaskStore = create<TaskState>()(
         set((state) => ({
           tasks: state.tasks.map((t) => {
             const newOrder = orderedIds.indexOf(t.id);
-            return newOrder === -1 ? t : { ...t, order: newOrder };
+            return newOrder === -1 ? t : { ...t, order: newOrder, updatedAt: new Date().toISOString() };
           }),
         }));
       },
@@ -180,6 +200,7 @@ export const useTaskStore = create<TaskState>()(
                   ...t,
                   snoozeHistory: [...t.snoozeHistory, new Date().toISOString()],
                   notificationIds: notifId ? [...t.notificationIds, notifId] : t.notificationIds,
+                  updatedAt: new Date().toISOString(),
                 }
               : t
           ),
@@ -213,9 +234,7 @@ export const useTaskStore = create<TaskState>()(
 
       getOverdueUnfinished: () => {
         const todayStart = startOfDay(new Date());
-        return get().tasks.filter(
-          (t) => !t.isDone && t.dueDate && isBefore(new Date(t.dueDate), todayStart)
-        );
+        return get().tasks.filter((t) => !t.isDone && t.dueDate && isBefore(new Date(t.dueDate), todayStart));
       },
     }),
     {

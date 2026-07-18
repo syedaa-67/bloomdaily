@@ -25,6 +25,11 @@
       },
       "permissions": ["RECEIVE_BOOT_COMPLETED", "SCHEDULE_EXACT_ALARM", "POST_NOTIFICATIONS"]
     },
+    "web": {
+      "favicon": "./assets/icon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
     "plugins": [
       [
         "expo-notifications",

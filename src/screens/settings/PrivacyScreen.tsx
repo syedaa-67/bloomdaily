@@ -4,7 +4,7 @@ import { ScreenContainer } from '@/components/ScreenContainer';
 import { useTheme } from '@/theme/ThemeProvider';
 import { spacing, typography } from '@/theme/theme';
 
-const SECTIONS: Array<{ title: string; body: string }> = [
+const SECTIONS: { title: string; body: string }[] = [
   {
     title: 'What stays on your device',
     body:
@@ -43,7 +43,7 @@ export function PrivacyScreen() {
     <ScreenContainer>
       <Text style={[styles.heading, { color: theme.textPrimary }]}>Privacy, plainly</Text>
       <Text style={[styles.intro, { color: theme.textSecondary }]}>
-        We built BloomDaily privacy-first. Here's exactly what that means.
+        We built BloomDaily privacy-first. Here&apos;s exactly what that means.
       </Text>
       {SECTIONS.map((section) => (
         <View key={section.title} style={{ marginBottom: spacing.lg }}>

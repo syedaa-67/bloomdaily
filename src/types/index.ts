@@ -1,13 +1,6 @@
 export type Priority = 'High' | 'Medium' | 'Low';
 
-export type Category =
-  | 'Study'
-  | 'Self-care'
-  | 'Errands'
-  | 'Health'
-  | 'Work'
-  | 'Social'
-  | 'Other';
+export type Category = 'Study' | 'Self-care' | 'Errands' | 'Health' | 'Work' | 'Social' | 'Other';
 
 export type RecurrenceRule =
   | { type: 'none' }
@@ -39,13 +32,14 @@ export interface Task {
   snoozeHistory: string[]; // ISO timestamps of each "remind me later" tap
   notificationIds: string[]; // scheduled expo-notifications identifiers
   templateOrigin?: string;
+  updatedAt: string; // ISO string, bumped on every mutation — used by cloud sync to merge devices
 }
 
 export interface TaskTemplate {
   id: string;
   name: string;
   description: string;
-  tasks: Array<Pick<Task, 'title' | 'category' | 'priority' | 'estimatedMinutes'>>;
+  tasks: Pick<Task, 'title' | 'category' | 'priority' | 'estimatedMinutes'>[];
 }
 
 export interface Habit {
@@ -56,6 +50,7 @@ export interface Habit {
   createdAt: string;
   completedDates: string[]; // 'yyyy-MM-dd'
   targetDaysPerWeek: number;
+  updatedAt: string; // ISO string, bumped on every mutation — used by cloud sync to merge devices
 }
 
 export interface MoodCheckIn {

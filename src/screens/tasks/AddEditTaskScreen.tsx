@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radius, spacing, typography } from '@/theme/theme';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
+import { DueDatePickerField } from '@/components/DueDatePickerField';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { Category, Priority, RecurrenceRule } from '@/types';
@@ -23,7 +23,7 @@ const REMINDER_OPTIONS = [
   { label: '1 hour before', value: 60 },
   { label: 'No reminder', value: -1 },
 ];
-const RECURRENCE_OPTIONS: Array<{ label: string; value: RecurrenceRule['type'] }> = [
+const RECURRENCE_OPTIONS: { label: string; value: RecurrenceRule['type'] }[] = [
   { label: 'Does not repeat', value: 'none' },
   { label: 'Daily', value: 'daily' },
   { label: 'Weekly', value: 'weekly' },
@@ -44,7 +44,9 @@ export function AddEditTaskScreen() {
 
   const [title, setTitle] = useState(editingTask?.title ?? route.params?.prefillTitle ?? '');
   const [description, setDescription] = useState(editingTask?.description ?? '');
-  const [dueDate, setDueDate] = useState<Date | null>(editingTask?.dueDate ? new Date(editingTask.dueDate) : null);
+  const [dueDate, setDueDate] = useState<Date | null>(
+    editingTask?.dueDate ? new Date(editingTask.dueDate) : null
+  );
   const [priority, setPriority] = useState<Priority>(editingTask?.priority ?? 'Medium');
   const [category, setCategory] = useState<Category>(editingTask?.category ?? 'Other');
   const [estimatedMinutes, setEstimatedMinutes] = useState(
@@ -52,9 +54,11 @@ export function AddEditTaskScreen() {
   );
   const [subtaskDraft, setSubtaskDraft] = useState('');
   const [subtasks, setSubtasks] = useState<string[]>(editingTask?.subtasks.map((s) => s.title) ?? []);
-  const [recurrenceType, setRecurrenceType] = useState<RecurrenceRule['type']>(editingTask?.recurrence.type ?? 'none');
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceRule['type']>(
+    editingTask?.recurrence.type ?? 'none'
+  );
   const [reminderMinutes, setReminderMinutes] = useState(
-    editingTask?.reminderMinutesBefore === null ? -1 : editingTask?.reminderMinutesBefore ?? defaultReminder
+    editingTask?.reminderMinutesBefore === null ? -1 : (editingTask?.reminderMinutesBefore ?? defaultReminder)
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -75,8 +79,8 @@ export function AddEditTaskScreen() {
       recurrenceType === 'weekly'
         ? { type: 'weekly', daysOfWeek: dueDate ? [dueDate.getDay()] : [new Date().getDay()] }
         : recurrenceType === 'daily'
-        ? { type: 'daily' }
-        : { type: 'none' };
+          ? { type: 'daily' }
+          : { type: 'none' };
 
     const payload = {
       title: title.trim(),
@@ -103,9 +107,13 @@ export function AddEditTaskScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top']}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()}>
-          <Text style={{ color: theme.textSecondary, fontFamily: typography.fontFamily.bodyMedium }}>Cancel</Text>
+          <Text style={{ color: theme.textSecondary, fontFamily: typography.fontFamily.bodyMedium }}>
+            Cancel
+          </Text>
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>{editingTask ? 'Edit task' : 'New task'}</Text>
+        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
+          {editingTask ? 'Edit task' : 'New task'}
+        </Text>
         <Pressable onPress={handleSave} disabled={!canSave || saving}>
           <Text
             style={{
@@ -135,13 +143,17 @@ export function AddEditTaskScreen() {
             onPress={() => setShowDatePicker(true)}
             style={[styles.pickerButton, { borderColor: theme.border, backgroundColor: theme.surface }]}
           >
-            <Text style={{ color: theme.textPrimary }}>{dueDate ? format(dueDate, 'MMM d, yyyy') : 'Pick a date'}</Text>
+            <Text style={{ color: theme.textPrimary }}>
+              {dueDate ? format(dueDate, 'MMM d, yyyy') : 'Pick a date'}
+            </Text>
           </Pressable>
           <Pressable
             onPress={() => setShowTimePicker(true)}
             style={[styles.pickerButton, { borderColor: theme.border, backgroundColor: theme.surface }]}
           >
-            <Text style={{ color: theme.textPrimary }}>{dueDate ? format(dueDate, 'h:mm a') : 'Pick a time'}</Text>
+            <Text style={{ color: theme.textPrimary }}>
+              {dueDate ? format(dueDate, 'h:mm a') : 'Pick a time'}
+            </Text>
           </Pressable>
           {dueDate ? (
             <Pressable onPress={() => setDueDate(null)} style={styles.clearButton}>
@@ -150,32 +162,26 @@ export function AddEditTaskScreen() {
           ) : null}
         </View>
         {showDatePicker && (
-          <DateTimePicker
-            value={dueDate ?? new Date()}
+          <DueDatePickerField
             mode="date"
-            display={Platform.OS === 'ios' ? 'inline' : 'default'}
-            onChange={(_, selected) => {
-              setShowDatePicker(Platform.OS === 'ios');
-              if (selected) {
-                const base = dueDate ?? new Date();
-                base.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
-                setDueDate(new Date(base));
-              }
+            value={dueDate ?? new Date()}
+            onRequestClose={() => setShowDatePicker(false)}
+            onChange={(selected) => {
+              const base = dueDate ?? new Date();
+              base.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+              setDueDate(new Date(base));
             }}
           />
         )}
         {showTimePicker && (
-          <DateTimePicker
-            value={dueDate ?? new Date()}
+          <DueDatePickerField
             mode="time"
-            display="default"
-            onChange={(_, selected) => {
-              setShowTimePicker(false);
-              if (selected) {
-                const base = dueDate ?? new Date();
-                base.setHours(selected.getHours(), selected.getMinutes());
-                setDueDate(new Date(base));
-              }
+            value={dueDate ?? new Date()}
+            onRequestClose={() => setShowTimePicker(false)}
+            onChange={(selected) => {
+              const base = dueDate ?? new Date();
+              base.setHours(selected.getHours(), selected.getMinutes());
+              setDueDate(new Date(base));
             }}
           />
         )}
@@ -188,7 +194,10 @@ export function AddEditTaskScreen() {
               onPress={() => setPriority(p)}
               style={[
                 styles.chip,
-                { backgroundColor: priority === p ? theme.primary : theme.surface, borderColor: theme.border },
+                {
+                  backgroundColor: priority === p ? theme.primary : theme.surface,
+                  borderColor: theme.border,
+                },
               ]}
             >
               <Text style={{ color: priority === p ? '#FFF' : theme.textPrimary }}>{p}</Text>
@@ -204,7 +213,10 @@ export function AddEditTaskScreen() {
               onPress={() => setCategory(c)}
               style={[
                 styles.chip,
-                { backgroundColor: category === c ? theme.primary : theme.surface, borderColor: theme.border },
+                {
+                  backgroundColor: category === c ? theme.primary : theme.surface,
+                  borderColor: theme.border,
+                },
               ]}
             >
               <Text style={{ color: category === c ? '#FFF' : theme.textPrimary }}>{c}</Text>
@@ -227,10 +239,18 @@ export function AddEditTaskScreen() {
               onPress={() => setReminderMinutes(opt.value)}
               style={[
                 styles.chip,
-                { backgroundColor: reminderMinutes === opt.value ? theme.primary : theme.surface, borderColor: theme.border },
+                {
+                  backgroundColor: reminderMinutes === opt.value ? theme.primary : theme.surface,
+                  borderColor: theme.border,
+                },
               ]}
             >
-              <Text style={{ color: reminderMinutes === opt.value ? '#FFF' : theme.textPrimary, fontSize: typography.size.xs }}>
+              <Text
+                style={{
+                  color: reminderMinutes === opt.value ? '#FFF' : theme.textPrimary,
+                  fontSize: typography.size.xs,
+                }}
+              >
                 {opt.label}
               </Text>
             </Pressable>
@@ -245,10 +265,18 @@ export function AddEditTaskScreen() {
               onPress={() => setRecurrenceType(opt.value)}
               style={[
                 styles.chip,
-                { backgroundColor: recurrenceType === opt.value ? theme.primary : theme.surface, borderColor: theme.border },
+                {
+                  backgroundColor: recurrenceType === opt.value ? theme.primary : theme.surface,
+                  borderColor: theme.border,
+                },
               ]}
             >
-              <Text style={{ color: recurrenceType === opt.value ? '#FFF' : theme.textPrimary, fontSize: typography.size.xs }}>
+              <Text
+                style={{
+                  color: recurrenceType === opt.value ? '#FFF' : theme.textPrimary,
+                  fontSize: typography.size.xs,
+                }}
+              >
                 {opt.label}
               </Text>
             </Pressable>
@@ -300,12 +328,28 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontFamily: typography.fontFamily.heading, fontSize: typography.size.md },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  label: { fontFamily: typography.fontFamily.bodyMedium, fontSize: typography.size.sm, marginBottom: spacing.xs, marginTop: spacing.sm },
+  label: {
+    fontFamily: typography.fontFamily.bodyMedium,
+    fontSize: typography.size.sm,
+    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
-  pickerButton: { borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 12 },
+  pickerButton: {
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+  },
   clearButton: { paddingHorizontal: spacing.sm },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
   chip: { paddingHorizontal: spacing.md, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1 },
   subtaskRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },
-  subtaskInput: { flex: 1, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 10 },
+  subtaskInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+  },
 });

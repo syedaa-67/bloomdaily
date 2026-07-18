@@ -8,7 +8,7 @@ interface Props {
   children: React.ReactNode;
   scroll?: boolean;
   style?: ViewStyle;
-  edges?: Array<'top' | 'bottom' | 'left' | 'right'>;
+  edges?: ('top' | 'bottom' | 'left' | 'right')[];
 }
 
 export function ScreenContainer({ children, scroll = true, style, edges = ['top'] }: Props) {

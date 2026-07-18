@@ -8,24 +8,37 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { radius, shadow, spacing, typography } from '@/theme/theme';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useUserStore } from '@/store/useUserStore';
+import { isFirebaseConfigured } from '@/services/firebase';
 import { exportBackup, exportTasksAsCsv, importBackup } from '@/services/backupService';
 import { ThemePreference } from '@/types';
 import { RootStackParamList } from '@/navigation/types';
 
-const THEME_OPTIONS: Array<{ label: string; value: ThemePreference }> = [
+const THEME_OPTIONS: { label: string; value: ThemePreference }[] = [
   { label: 'System', value: 'system' },
   { label: 'Light', value: 'light' },
   { label: 'Dark', value: 'dark' },
 ];
 
-function SettingsRow({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
+function SettingsRow({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   const theme = useTheme();
   return (
     <View style={styles.row}>
       <View style={{ flex: 1, marginRight: spacing.sm }}>
-        <Text style={{ color: theme.textPrimary, fontFamily: typography.fontFamily.bodyMedium }}>{label}</Text>
+        <Text style={{ color: theme.textPrimary, fontFamily: typography.fontFamily.bodyMedium }}>
+          {label}
+        </Text>
         {description ? (
-          <Text style={{ color: theme.textMuted, fontSize: typography.size.xs, marginTop: 2 }}>{description}</Text>
+          <Text style={{ color: theme.textMuted, fontSize: typography.size.xs, marginTop: 2 }}>
+            {description}
+          </Text>
         ) : null}
       </View>
       {children}
@@ -89,10 +102,15 @@ export function SettingsScreen() {
               onPress={() => setThemePreference(opt.value)}
               style={[
                 styles.chip,
-                { backgroundColor: themePreference === opt.value ? theme.primary : theme.surface, borderColor: theme.border },
+                {
+                  backgroundColor: themePreference === opt.value ? theme.primary : theme.surface,
+                  borderColor: theme.border,
+                },
               ]}
             >
-              <Text style={{ color: themePreference === opt.value ? '#FFF' : theme.textPrimary }}>{opt.label}</Text>
+              <Text style={{ color: themePreference === opt.value ? '#FFF' : theme.textPrimary }}>
+                {opt.label}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -100,10 +118,16 @@ export function SettingsScreen() {
 
       <View style={[styles.card, shadow.soft, { backgroundColor: theme.card }]}>
         <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>Reminders</Text>
-        <SettingsRow label="Evening check-in" description="A gentle nudge about unfinished tasks each evening">
+        <SettingsRow
+          label="Evening check-in"
+          description="A gentle nudge about unfinished tasks each evening"
+        >
           <Switch value={eveningCheckInEnabled} onValueChange={(v) => setEveningCheckIn(v)} />
         </SettingsRow>
-        <SettingsRow label="Quiet hours" description={`${quietHours.startHour}:00 – ${quietHours.endHour}:00`}>
+        <SettingsRow
+          label="Quiet hours"
+          description={`${quietHours.startHour}:00 – ${quietHours.endHour}:00`}
+        >
           <Switch
             value={quietHours.isEnabled}
             onValueChange={(v) => setQuietHours({ ...quietHours, isEnabled: v })}
@@ -127,9 +151,30 @@ export function SettingsScreen() {
         >
           <Switch value={analyticsOptIn} onValueChange={setAnalyticsOptIn} />
         </SettingsRow>
-        <Button label="Export full backup (.json)" variant="secondary" onPress={handleExport} loading={busy === 'export'} fullWidth style={{ marginTop: spacing.sm }} />
-        <Button label="Export tasks (.csv)" variant="secondary" onPress={handleCsv} loading={busy === 'csv'} fullWidth style={{ marginTop: spacing.sm }} />
-        <Button label="Restore from backup" variant="ghost" onPress={handleImport} loading={busy === 'import'} fullWidth style={{ marginTop: spacing.sm }} />
+        <Button
+          label="Export full backup (.json)"
+          variant="secondary"
+          onPress={handleExport}
+          loading={busy === 'export'}
+          fullWidth
+          style={{ marginTop: spacing.sm }}
+        />
+        <Button
+          label="Export tasks (.csv)"
+          variant="secondary"
+          onPress={handleCsv}
+          loading={busy === 'csv'}
+          fullWidth
+          style={{ marginTop: spacing.sm }}
+        />
+        <Button
+          label="Restore from backup"
+          variant="ghost"
+          onPress={handleImport}
+          loading={busy === 'import'}
+          fullWidth
+          style={{ marginTop: spacing.sm }}
+        />
         <Pressable onPress={() => navigation.navigate('Privacy')} style={styles.linkRow}>
           <Text style={{ color: theme.textPrimary }}>Privacy policy</Text>
           <Text style={{ color: theme.textMuted }}>›</Text>
@@ -141,6 +186,11 @@ export function SettingsScreen() {
         <Text style={{ color: theme.textSecondary, marginBottom: spacing.sm }}>
           {profile?.authMode === 'firebase' ? profile.email : 'Guest Mode (local only)'}
         </Text>
+        {profile?.authMode === 'firebase' && isFirebaseConfigured ? (
+          <Text style={{ color: theme.textMuted, fontSize: typography.size.xs, marginBottom: spacing.sm }}>
+            ☁️ Synced — tasks and habits stay up to date across every device you sign into.
+          </Text>
+        ) : null}
         <Button label="Log out" variant="danger" onPress={confirmSignOut} fullWidth />
       </View>
     </ScreenContainer>
@@ -148,12 +198,25 @@ export function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  heading: { fontFamily: typography.fontFamily.headingBold, fontSize: typography.size.xxl, marginBottom: spacing.md },
+  heading: {
+    fontFamily: typography.fontFamily.headingBold,
+    fontSize: typography.size.xxl,
+    marginBottom: spacing.md,
+  },
   card: { borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
-  cardTitle: { fontFamily: typography.fontFamily.heading, fontSize: typography.size.md, marginBottom: spacing.sm },
+  cardTitle: {
+    fontFamily: typography.fontFamily.heading,
+    fontSize: typography.size.md,
+    marginBottom: spacing.sm,
+  },
   chipRow: { flexDirection: 'row', gap: spacing.xs },
   chip: { paddingHorizontal: spacing.md, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+  },
   linkRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

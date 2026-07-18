@@ -23,6 +23,11 @@ export type RootStackParamList = {
 
 declare global {
   namespace ReactNavigation {
+    // React Navigation's own TS setup docs require exactly this
+    // empty-interface-extends shape for global param list augmentation; a
+    // `type` alias can't be merged this way, so this isn't a candidate for
+    // simplifying away.
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface RootParamList extends RootStackParamList {}
   }
 }

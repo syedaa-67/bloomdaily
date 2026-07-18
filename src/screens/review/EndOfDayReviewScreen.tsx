@@ -16,12 +16,22 @@ import { RootStackParamList } from '@/navigation/types';
 export function EndOfDayReviewScreen() {
   const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const tasks = useTaskStore((s) => s.tasks);
   const getTasksForDate = useTaskStore((s) => s.getTasksForDate);
   const rescheduleTask = useTaskStore((s) => s.rescheduleTask);
   const addJournalEntry = useWellnessStore((s) => s.addJournalEntry);
 
-  const todayTasks = getTasksForDate(new Date());
-  const completed = todayTasks.filter((t) => t.isDone);
+  // getTasksForDate returns a fresh array every call, so it has to be
+  // stabilized against the actual store state (`tasks`) before anything
+  // downstream can usefully memoize off of it.
+  const todayTasks = useMemo(() => {
+    // getTasksForDate closes over the store's own `tasks` internally, so this
+    // call doesn't read `tasks` directly — but it must still be a dependency
+    // so the memo invalidates whenever the store's tasks actually change.
+    void tasks;
+    return getTasksForDate(new Date());
+  }, [tasks, getTasksForDate]);
+  const completed = useMemo(() => todayTasks.filter((t) => t.isDone), [todayTasks]);
   const unfinished = useMemo(
     () => [...todayTasks.filter((t) => !t.isDone)].sort((a, b) => (a.priority === 'High' ? -1 : 1)),
     [todayTasks]
@@ -58,7 +68,7 @@ export function EndOfDayReviewScreen() {
         ))}
         {completed.length === 0 ? (
           <Text style={[styles.doneItem, { color: theme.textSecondary }]}>
-            That's okay — tomorrow is a fresh page.
+            That&apos;s okay — tomorrow is a fresh page.
           </Text>
         ) : null}
       </View>
@@ -73,7 +83,13 @@ export function EndOfDayReviewScreen() {
                 <Text style={{ color: theme.success, fontSize: typography.size.xs }}>Moved to tomorrow</Text>
               ) : (
                 <Pressable onPress={() => rescheduleToTomorrow(t.id, t.dueDate)}>
-                  <Text style={{ color: theme.primaryDark, fontSize: typography.size.xs, fontFamily: typography.fontFamily.bodyBold }}>
+                  <Text
+                    style={{
+                      color: theme.primaryDark,
+                      fontSize: typography.size.xs,
+                      fontFamily: typography.fontFamily.bodyBold,
+                    }}
+                  >
                     Move to tomorrow
                   </Text>
                 </Pressable>
@@ -102,10 +118,23 @@ export function EndOfDayReviewScreen() {
 }
 
 const styles = StyleSheet.create({
-  heading: { fontFamily: typography.fontFamily.headingBold, fontSize: typography.size.xxl, marginBottom: spacing.md },
+  heading: {
+    fontFamily: typography.fontFamily.headingBold,
+    fontSize: typography.size.xxl,
+    marginBottom: spacing.md,
+  },
   card: { borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
-  cardTitle: { fontFamily: typography.fontFamily.heading, fontSize: typography.size.md, marginBottom: spacing.sm },
+  cardTitle: {
+    fontFamily: typography.fontFamily.heading,
+    fontSize: typography.size.md,
+    marginBottom: spacing.sm,
+  },
   doneItem: { fontFamily: typography.fontFamily.body, fontSize: typography.size.sm, marginBottom: 4 },
   unfinishedRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },
-  promptText: { fontFamily: typography.fontFamily.body, fontStyle: 'italic', fontSize: typography.size.sm, marginBottom: spacing.sm },
+  promptText: {
+    fontFamily: typography.fontFamily.body,
+    fontStyle: 'italic',
+    fontSize: typography.size.sm,
+    marginBottom: spacing.sm,
+  },
 });

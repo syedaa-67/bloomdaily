@@ -50,6 +50,7 @@ export const useWellnessStore = create<WellnessState>()(
           createdAt: new Date().toISOString(),
           completedDates: [],
           targetDaysPerWeek,
+          updatedAt: new Date().toISOString(),
         };
         set((state) => ({ habits: [...state.habits, habit] }));
       },
@@ -62,9 +63,8 @@ export const useWellnessStore = create<WellnessState>()(
             const has = h.completedDates.includes(key);
             return {
               ...h,
-              completedDates: has
-                ? h.completedDates.filter((d) => d !== key)
-                : [...h.completedDates, key],
+              completedDates: has ? h.completedDates.filter((d) => d !== key) : [...h.completedDates, key],
+              updatedAt: new Date().toISOString(),
             };
           }),
         }));
@@ -135,8 +135,7 @@ export const useWellnessStore = create<WellnessState>()(
           get().cycleSettings;
         if (!isEnabled || !lastPeriodStartDate) return null;
         const dayInCycle =
-          (differenceInCalendarDays(new Date(), new Date(lastPeriodStartDate)) %
-            averageCycleLength +
+          ((differenceInCalendarDays(new Date(), new Date(lastPeriodStartDate)) % averageCycleLength) +
             averageCycleLength) %
           averageCycleLength;
 
@@ -153,7 +152,7 @@ export const useWellnessStore = create<WellnessState>()(
           menstrual:
             'Lower-energy phase — good day for lighter tasks, gentle movement, and extra rest if you need it.',
           follicular:
-            "Energy tends to build here — a great window to start new projects or tackle harder tasks.",
+            'Energy tends to build here — a great window to start new projects or tackle harder tasks.',
           ovulation:
             'Often a high-energy, social phase — good for presentations, collaboration, or big pushes.',
           luteal:
